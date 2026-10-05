@@ -27,18 +27,23 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDto update(Long id, UserDto userDto) {
-        User user = getUser(id);
+        User existing = getUser(id);
 
         if (userDto.getEmail() != null) {
             checkEmailUnique(userDto.getEmail(), id);
-            user.setEmail(userDto.getEmail());
         }
 
-        if (userDto.getName() != null) {
-            user.setName(userDto.getName());
-        }
+        User updated = new User(
+                existing.getId(),
+                userDto.getName() != null
+                        ? userDto.getName()
+                        : existing.getName(),
+                userDto.getEmail() != null
+                        ? userDto.getEmail()
+                        : existing.getEmail()
+        );
 
-        return UserMapper.toDto(userRepository.save(user));
+        return UserMapper.toDto(userRepository.save(updated));
     }
 
     @Override

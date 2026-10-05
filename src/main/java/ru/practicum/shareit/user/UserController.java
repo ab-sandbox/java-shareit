@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.practicum.shareit.user.dto.OnCreate;
-import ru.practicum.shareit.user.dto.OnUpdate;
+import ru.practicum.shareit.validation.OnCreate;
+import ru.practicum.shareit.validation.OnUpdate;
 import ru.practicum.shareit.user.dto.UserDto;
 
 import java.util.List;
