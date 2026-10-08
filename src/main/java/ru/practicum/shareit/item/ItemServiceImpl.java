@@ -31,6 +31,8 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto update(Long userId, Long itemId, ItemDto itemDto) {
+        getUser(userId);
+
         Item existing = getItem(itemId);
 
         if (!existing.getOwner().getId().equals(userId)) {
@@ -50,7 +52,8 @@ public class ItemServiceImpl implements ItemService {
                 itemDto.getAvailable() != null
                         ? itemDto.getAvailable()
                         : existing.getAvailable(),
-                existing.getOwner()
+                existing.getOwner(),
+                existing.getRequest()
         );
 
         return ItemMapper.toDto(itemRepository.save(updated));

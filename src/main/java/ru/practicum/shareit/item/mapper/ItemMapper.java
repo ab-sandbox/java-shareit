@@ -23,6 +23,7 @@ public final class ItemMapper {
                 dto.getName(),
                 dto.getDescription(),
                 dto.getAvailable(),
+                null,
                 null
         );
     }

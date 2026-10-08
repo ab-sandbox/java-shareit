@@ -37,7 +37,7 @@ public class InMemoryUserRepository implements UserRepository {
     @Override
     public synchronized Optional<User> findByEmail(String email) {
         return users.values().stream()
-                .filter(user -> email.equals(user.getEmail()))
+                .filter(user -> email.equalsIgnoreCase(user.getEmail()))
                 .findFirst();
     }
 

@@ -124,4 +124,24 @@ class UserServiceImplTest {
                 () -> userService.findById(created.getId())
         );
     }
+
+    @Test
+    void shouldRejectDuplicateEmailIgnoringCase() {
+        userService.create(new UserDto(
+                null,
+                "Иван",
+                "Ivan@mail.ru"
+        ));
+
+        UserDto duplicate = new UserDto(
+                null,
+                "Другой Иван",
+                "ivan@mail.ru"
+        );
+
+        assertThrows(
+                ConflictException.class,
+                () -> userService.create(duplicate)
+        );
+    }
 }

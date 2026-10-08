@@ -141,6 +141,27 @@ class ItemServiceImplTest {
         assertEquals("Дрель", items.get(0).getName());
     }
 
+    @Test
+    void shouldThrowWhenUpdatingItemWithUnknownUser() {
+        ItemDto item = itemService.create(
+                ownerId,
+                new ItemDto(null, "Дрель", "Ударная", true)
+        );
+
+        Long unknownUserId = 999L;
+
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> itemService.update(
+                        unknownUserId,
+                        item.getId(),
+                        new ItemDto(null, "Новая дрель", null, null)
+                )
+        );
+
+        assertTrue(exception.getMessage().contains("Пользователь"));
+    }
+
     private ItemDto createItem() {
         return itemService.create(
                 ownerId,
