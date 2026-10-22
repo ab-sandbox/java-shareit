@@ -6,68 +6,89 @@ import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.user.dto.UserDto;
 
+import java.util.List;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 class UserServiceImplTest {
 
+    private UserRepository userRepository;
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        UserRepository userRepository = new InMemoryUserRepository();
+        userRepository = mock(UserRepository.class);
         userService = new UserServiceImpl(userRepository);
     }
 
     @Test
     void shouldCreateUser() {
         UserDto userDto = new UserDto(
-                null,
-                "Alexey",
-                "alexey@example.com"
+                null, "Alexey", "alexey@example.com"
         );
+
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(invocation -> {
+                    User user = invocation.getArgument(0);
+                    user.setId(1L);
+                    return user;
+                });
 
         UserDto created = userService.create(userDto);
 
         assertEquals(1L, created.getId());
         assertEquals("Alexey", created.getName());
         assertEquals("alexey@example.com", created.getEmail());
+
+        verify(userRepository).save(any(User.class));
     }
 
     @Test
     void shouldFindUserById() {
-        UserDto created = userService.create(new UserDto(
-                null,
-                "Alexey",
-                "alexey@example.com"
-        ));
+        User user = new User(
+                1L, "Alexey", "alexey@example.com"
+        );
 
-        UserDto found = userService.findById(created.getId());
+        when(userRepository.findById(1L))
+                .thenReturn(Optional.of(user));
 
-        assertEquals(created.getId(), found.getId());
-        assertEquals(created.getName(), found.getName());
-        assertEquals(created.getEmail(), found.getEmail());
+        UserDto found = userService.findById(1L);
+
+        assertEquals(user.getId(), found.getId());
+        assertEquals(user.getName(), found.getName());
+        assertEquals(user.getEmail(), found.getEmail());
     }
 
     @Test
     void shouldUpdateOnlySpecifiedFields() {
-        UserDto created = userService.create(new UserDto(
-                null,
-                "Alexey",
-                "alexey@example.com"
-        ));
+        User user = new User(
+                1L, "Alexey", "alexey@example.com"
+        );
+
+        when(userRepository.findById(1L))
+                .thenReturn(Optional.of(user));
 
         UserDto updated = userService.update(
-                created.getId(),
+                1L,
                 new UserDto(null, "Alex", null)
         );
 
         assertEquals("Alex", updated.getName());
         assertEquals("alexey@example.com", updated.getEmail());
+
+        assertEquals("Alex", user.getName());
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
     void shouldThrowWhenUserNotFound() {
+        when(userRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
         assertThrows(
                 NotFoundException.class,
                 () -> userService.findById(999L)
@@ -76,72 +97,67 @@ class UserServiceImplTest {
 
     @Test
     void shouldThrowWhenEmailAlreadyExists() {
-        userService.create(new UserDto(
-                null,
-                "Alexey",
+        User existing = new User(
+                1L, "Alexey", "alexey@example.com"
+        );
+
+        when(userRepository.findByEmailIgnoreCase(
                 "alexey@example.com"
-        ));
+        )).thenReturn(Optional.of(existing));
 
         assertThrows(
                 ConflictException.class,
                 () -> userService.create(new UserDto(
-                        null,
-                        "Another user",
-                        "alexey@example.com"
+                        null, "Another user", "alexey@example.com"
                 ))
         );
+
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
     void shouldFindAllUsers() {
-        userService.create(new UserDto(
-                null,
-                "Alexey",
-                "alexey@example.com"
+        when(userRepository.findAll()).thenReturn(List.of(
+                new User(1L, "Alexey", "alexey@example.com"),
+                new User(2L, "Ivan", "ivan@example.com")
         ));
 
-        userService.create(new UserDto(
-                null,
-                "Ivan",
-                "ivan@example.com"
-        ));
+        List<UserDto> users = userService.findAll();
 
-        assertEquals(2, userService.findAll().size());
+        assertEquals(2, users.size());
+        assertEquals("Alexey", users.get(0).getName());
+        assertEquals("Ivan", users.get(1).getName());
     }
 
     @Test
     void shouldDeleteUser() {
-        UserDto created = userService.create(new UserDto(
-                null,
-                "Alexey",
-                "alexey@example.com"
-        ));
+        when(userRepository.findById(1L))
+                .thenReturn(Optional.of(new User(
+                        1L, "Alexey", "alexey@example.com"
+                )));
 
-        userService.delete(created.getId());
+        userService.delete(1L);
 
-        assertThrows(
-                NotFoundException.class,
-                () -> userService.findById(created.getId())
-        );
+        verify(userRepository).deleteById(1L);
     }
 
     @Test
     void shouldRejectDuplicateEmailIgnoringCase() {
-        userService.create(new UserDto(
-                null,
-                "Иван",
-                "Ivan@mail.ru"
-        ));
-
-        UserDto duplicate = new UserDto(
-                null,
-                "Другой Иван",
-                "ivan@mail.ru"
+        User existing = new User(
+                1L, "Иван", "Ivan@mail.ru"
         );
+
+        when(userRepository.findByEmailIgnoreCase(
+                "ivan@mail.ru"
+        )).thenReturn(Optional.of(existing));
 
         assertThrows(
                 ConflictException.class,
-                () -> userService.create(duplicate)
+                () -> userService.create(new UserDto(
+                        null, "Другой Иван", "ivan@mail.ru"
+                ))
         );
+
+        verify(userRepository, never()).save(any(User.class));
     }
 }

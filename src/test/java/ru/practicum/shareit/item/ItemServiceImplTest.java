@@ -4,46 +4,67 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.dto.ItemDto;
-import ru.practicum.shareit.user.InMemoryUserRepository;
+import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 class ItemServiceImplTest {
 
-    private ItemService itemService;
+    private ItemRepository itemRepository;
     private UserRepository userRepository;
-    private Long ownerId;
+    private ItemService itemService;
+
+    private User owner;
+    private Item item;
 
     @BeforeEach
     void setUp() {
-        userRepository = new InMemoryUserRepository();
-        ItemRepository itemRepository = new InMemoryItemRepository();
+        itemRepository = mock(ItemRepository.class);
+        userRepository = mock(UserRepository.class);
 
         itemService = new ItemServiceImpl(
                 itemRepository,
                 userRepository
         );
 
-        User owner = userRepository.save(new User(
-                null,
-                "Alexey",
-                "alexey@example.com"
-        ));
+        owner = new User(
+                1L, "Alexey", "alexey@example.com"
+        );
 
-        ownerId = owner.getId();
+        item = new Item(
+                1L,
+                "Дрель",
+                "Аккумуляторная дрель",
+                true,
+                owner,
+                null
+        );
     }
 
     @Test
     void shouldCreateItem() {
+        when(userRepository.findById(owner.getId()))
+                .thenReturn(Optional.of(owner));
+
+        when(itemRepository.save(any(Item.class)))
+                .thenAnswer(invocation -> {
+                    Item saved = invocation.getArgument(0);
+                    saved.setId(1L);
+                    return saved;
+                });
+
         ItemDto created = itemService.create(
-                ownerId,
+                owner.getId(),
                 new ItemDto(
                         null,
                         "Дрель",
@@ -54,50 +75,68 @@ class ItemServiceImplTest {
 
         assertEquals(1L, created.getId());
         assertEquals("Дрель", created.getName());
-        assertEquals("Аккумуляторная дрель", created.getDescription());
+        assertEquals("Аккумуляторная дрель",
+                created.getDescription());
         assertTrue(created.getAvailable());
+
+        verify(itemRepository).save(any(Item.class));
     }
 
     @Test
     void shouldUpdateOnlySpecifiedFields() {
-        ItemDto created = createItem();
+        mockExistingItem();
 
         ItemDto updated = itemService.update(
-                ownerId,
-                created.getId(),
+                owner.getId(),
+                item.getId(),
                 new ItemDto(null, null, null, false)
         );
 
         assertEquals("Дрель", updated.getName());
-        assertEquals("Аккумуляторная дрель", updated.getDescription());
+        assertEquals("Аккумуляторная дрель",
+                updated.getDescription());
         assertFalse(updated.getAvailable());
+
+        assertFalse(item.getAvailable());
+        verify(itemRepository, never()).save(any(Item.class));
     }
 
     @Test
     void shouldThrowWhenAnotherUserUpdatesItem() {
-        User anotherUser = userRepository.save(new User(
-                null,
-                "Ivan",
-                "ivan@example.com"
-        ));
+        User anotherUser = new User(
+                2L, "Ivan", "ivan@example.com"
+        );
 
-        ItemDto created = createItem();
+        when(userRepository.findById(anotherUser.getId()))
+                .thenReturn(Optional.of(anotherUser));
+
+        when(itemRepository.findById(item.getId()))
+                .thenReturn(Optional.of(item));
 
         assertThrows(
                 NotFoundException.class,
                 () -> itemService.update(
                         anotherUser.getId(),
-                        created.getId(),
-                        new ItemDto(null, "Чужая дрель", null, null)
+                        item.getId(),
+                        new ItemDto(
+                                null, "Чужая дрель", null, null
+                        )
                 )
         );
+
+        verify(itemRepository, never()).save(any(Item.class));
     }
 
     @Test
     void shouldFindItemsByOwner() {
-        createItem();
+        when(userRepository.findById(owner.getId()))
+                .thenReturn(Optional.of(owner));
 
-        List<ItemDto> items = itemService.findAllByOwner(ownerId);
+        when(itemRepository.findAllByOwnerId(owner.getId()))
+                .thenReturn(List.of(item));
+
+        List<ItemDto> items =
+                itemService.findAllByOwner(owner.getId());
 
         assertEquals(1, items.size());
         assertEquals("Дрель", items.get(0).getName());
@@ -105,72 +144,76 @@ class ItemServiceImplTest {
 
     @Test
     void shouldSearchAvailableItemsIgnoringCase() {
-        createItem();
+        when(itemRepository.search("ДРЕЛЬ"))
+                .thenReturn(List.of(item));
 
         List<ItemDto> items = itemService.search("ДРЕЛЬ");
 
         assertEquals(1, items.size());
         assertEquals("Дрель", items.get(0).getName());
+
+        verify(itemRepository).search("ДРЕЛЬ");
     }
 
     @Test
     void shouldNotFindUnavailableItems() {
-        ItemDto created = createItem();
+        when(itemRepository.search("дрель"))
+                .thenReturn(List.of());
 
-        itemService.update(
-                ownerId,
-                created.getId(),
-                new ItemDto(null, null, null, false)
-        );
+        List<ItemDto> items = itemService.search("дрель");
 
-        assertTrue(itemService.search("дрель").isEmpty());
+        assertTrue(items.isEmpty());
     }
 
     @Test
     void shouldReturnEmptyListForBlankSearch() {
-        assertTrue(itemService.search("   ").isEmpty());
+        List<ItemDto> items = itemService.search("   ");
+
+        assertTrue(items.isEmpty());
+        verifyNoInteractions(itemRepository);
     }
 
     @Test
     void shouldSearchItemByDescription() {
-        createItem();
+        when(itemRepository.search("аккумуляторная"))
+                .thenReturn(List.of(item));
 
-        List<ItemDto> items = itemService.search("аккумуляторная");
+        List<ItemDto> items =
+                itemService.search("аккумуляторная");
 
         assertEquals(1, items.size());
         assertEquals("Дрель", items.get(0).getName());
+
+        verify(itemRepository).search("аккумуляторная");
     }
 
     @Test
     void shouldThrowWhenUpdatingItemWithUnknownUser() {
-        ItemDto item = itemService.create(
-                ownerId,
-                new ItemDto(null, "Дрель", "Ударная", true)
-        );
-
-        Long unknownUserId = 999L;
+        when(userRepository.findById(999L))
+                .thenReturn(Optional.empty());
 
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
                 () -> itemService.update(
-                        unknownUserId,
+                        999L,
                         item.getId(),
-                        new ItemDto(null, "Новая дрель", null, null)
+                        new ItemDto(
+                                null, "Новая дрель", null, null
+                        )
                 )
         );
 
-        assertTrue(exception.getMessage().contains("Пользователь"));
+        assertTrue(exception.getMessage()
+                .contains("Пользователь"));
+
+        verify(itemRepository, never()).save(any(Item.class));
     }
 
-    private ItemDto createItem() {
-        return itemService.create(
-                ownerId,
-                new ItemDto(
-                        null,
-                        "Дрель",
-                        "Аккумуляторная дрель",
-                        true
-                )
-        );
+    private void mockExistingItem() {
+        when(userRepository.findById(owner.getId()))
+                .thenReturn(Optional.of(owner));
+
+        when(itemRepository.findById(item.getId()))
+                .thenReturn(Optional.of(item));
     }
 }
