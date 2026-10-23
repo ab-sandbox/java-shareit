@@ -60,6 +60,33 @@ public class BookingServiceImpl implements BookingService {
         return BookingMapper.toDto(bookingRepository.save(booking));
     }
 
+    @Override
+    @Transactional
+    public BookingDto approve(Long ownerId, Long bookingId, boolean approved) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Бронирование не найдено: " + bookingId
+                ));
+
+        if (!booking.getItem().getOwner().getId().equals(ownerId)) {
+            throw new NotFoundException(
+                    "Пользователь не является владельцем вещи"
+            );
+        }
+
+        if (booking.getStatus() != BookingStatus.WAITING) {
+            throw new IllegalArgumentException(
+                    "Решение по бронированию уже принято"
+            );
+        }
+
+        booking.setStatus(
+                approved ? BookingStatus.APPROVED : BookingStatus.REJECTED
+        );
+
+        return BookingMapper.toDto(booking);
+    }
+
     private void validateDates(BookingCreateDto dto) {
         LocalDateTime now = LocalDateTime.now();
 
