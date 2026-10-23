@@ -379,6 +379,64 @@ class BookingServiceImplTest {
         verifyNoInteractions(bookingRepository);
     }
 
+    @Test
+    void shouldGetBookingByBooker() {
+        Booking booking = createWaitingBooking();
+
+        when(bookingRepository.findById(booking.getId()))
+                .thenReturn(Optional.of(booking));
+
+        BookingDto result = bookingService.getById(
+                booker.getId(), booking.getId()
+        );
+
+        assertEquals(booking.getId(), result.getId());
+        assertEquals(BookingStatus.WAITING, result.getStatus());
+    }
+
+    @Test
+    void shouldGetBookingByOwner() {
+        Booking booking = createWaitingBooking();
+
+        when(bookingRepository.findById(booking.getId()))
+                .thenReturn(Optional.of(booking));
+
+        BookingDto result = bookingService.getById(
+                owner.getId(), booking.getId()
+        );
+
+        assertEquals(booking.getId(), result.getId());
+        assertEquals(BookingStatus.WAITING, result.getStatus());
+    }
+
+    @Test
+    void shouldThrowWhenGettingBookingByOtherUser() {
+        Booking booking = createWaitingBooking();
+
+        when(bookingRepository.findById(booking.getId()))
+                .thenReturn(Optional.of(booking));
+
+        assertThrows(
+                NotFoundException.class,
+                () -> bookingService.getById(
+                        999L, booking.getId()
+                )
+        );
+    }
+
+    @Test
+    void shouldThrowWhenBookingDoesNotExist() {
+        when(bookingRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                NotFoundException.class,
+                () -> bookingService.getById(
+                        booker.getId(), 999L
+                )
+        );
+    }
+
     private void mockExistingUserAndItem() {
         when(userRepository.findById(booker.getId()))
                 .thenReturn(Optional.of(booker));

@@ -142,6 +142,25 @@ public class BookingServiceImpl implements BookingService {
                 .toList();
     }
 
+    @Override
+    public BookingDto getById(Long userId, Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Бронирование не найдено: " + bookingId
+                ));
+
+        Long bookerId = booking.getBooker().getId();
+        Long ownerId = booking.getItem().getOwner().getId();
+
+        if (!userId.equals(bookerId) && !userId.equals(ownerId)) {
+            throw new NotFoundException(
+                    "Бронирование недоступно пользователю: " + userId
+            );
+        }
+
+        return BookingMapper.toDto(booking);
+    }
+
     private void validateDates(BookingCreateDto dto) {
         LocalDateTime now = LocalDateTime.now();
 
