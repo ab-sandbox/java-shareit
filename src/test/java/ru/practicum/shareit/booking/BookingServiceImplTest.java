@@ -2,6 +2,8 @@ package ru.practicum.shareit.booking;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import ru.practicum.shareit.booking.dto.BookingCreateDto;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.exception.NotFoundException;
@@ -11,6 +13,7 @@ import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -279,6 +282,101 @@ class BookingServiceImplTest {
         );
 
         assertEquals(BookingStatus.APPROVED, booking.getStatus());
+    }
+
+    @ParameterizedTest
+    @EnumSource(BookingState.class)
+    void shouldFindBookingsByBooker(BookingState state) {
+        when(userRepository.existsById(booker.getId()))
+                .thenReturn(true);
+
+        Booking booking = createWaitingBooking();
+
+        switch (state) {
+            case ALL -> when(bookingRepository.findByBooker(booker.getId()))
+                    .thenReturn(List.of(booking));
+
+            case CURRENT -> when(bookingRepository.findCurrentByBooker(
+                    eq(booker.getId()), any(LocalDateTime.class)))
+                    .thenReturn(List.of(booking));
+
+            case PAST -> when(bookingRepository.findPastByBooker(
+                    eq(booker.getId()), any(LocalDateTime.class)))
+                    .thenReturn(List.of(booking));
+
+            case FUTURE -> when(bookingRepository.findFutureByBooker(
+                    eq(booker.getId()), any(LocalDateTime.class)))
+                    .thenReturn(List.of(booking));
+
+            case WAITING -> when(bookingRepository.findByBookerAndStatus(
+                    booker.getId(), BookingStatus.WAITING))
+                    .thenReturn(List.of(booking));
+
+            case REJECTED -> when(bookingRepository.findByBookerAndStatus(
+                    booker.getId(), BookingStatus.REJECTED))
+                    .thenReturn(List.of(booking));
+        }
+
+        List<BookingDto> result =
+                bookingService.findByBooker(booker.getId(), state);
+
+        assertEquals(1, result.size());
+        assertEquals(booking.getId(), result.get(0).getId());
+    }
+
+    @ParameterizedTest
+    @EnumSource(BookingState.class)
+    void shouldFindBookingsByOwner(BookingState state) {
+        when(userRepository.existsById(owner.getId()))
+                .thenReturn(true);
+
+        Booking booking = createWaitingBooking();
+
+        switch (state) {
+            case ALL -> when(bookingRepository.findByOwner(owner.getId()))
+                    .thenReturn(List.of(booking));
+
+            case CURRENT -> when(bookingRepository.findCurrentByOwner(
+                    eq(owner.getId()), any(LocalDateTime.class)))
+                    .thenReturn(List.of(booking));
+
+            case PAST -> when(bookingRepository.findPastByOwner(
+                    eq(owner.getId()), any(LocalDateTime.class)))
+                    .thenReturn(List.of(booking));
+
+            case FUTURE -> when(bookingRepository.findFutureByOwner(
+                    eq(owner.getId()), any(LocalDateTime.class)))
+                    .thenReturn(List.of(booking));
+
+            case WAITING -> when(bookingRepository.findByOwnerAndStatus(
+                    owner.getId(), BookingStatus.WAITING))
+                    .thenReturn(List.of(booking));
+
+            case REJECTED -> when(bookingRepository.findByOwnerAndStatus(
+                    owner.getId(), BookingStatus.REJECTED))
+                    .thenReturn(List.of(booking));
+        }
+
+        List<BookingDto> result =
+                bookingService.findByOwner(owner.getId(), state);
+
+        assertEquals(1, result.size());
+        assertEquals(booking.getId(), result.get(0).getId());
+    }
+
+    @Test
+    void shouldThrowWhenFindingBookingsForUnknownUser() {
+        when(userRepository.existsById(999L))
+                .thenReturn(false);
+
+        assertThrows(
+                NotFoundException.class,
+                () -> bookingService.findByBooker(
+                        999L, BookingState.ALL
+                )
+        );
+
+        verifyNoInteractions(bookingRepository);
     }
 
     private void mockExistingUserAndItem() {

@@ -13,6 +13,7 @@ import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -87,6 +88,60 @@ public class BookingServiceImpl implements BookingService {
         return BookingMapper.toDto(booking);
     }
 
+    @Override
+    public List<BookingDto> findByBooker(
+            Long bookerId,
+            BookingState state
+    ) {
+        validateUser(bookerId);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Booking> bookings = switch (state) {
+            case ALL -> bookingRepository.findByBooker(bookerId);
+            case CURRENT -> bookingRepository.findCurrentByBooker(bookerId, now);
+            case PAST -> bookingRepository.findPastByBooker(bookerId, now);
+            case FUTURE -> bookingRepository.findFutureByBooker(bookerId, now);
+            case WAITING -> bookingRepository.findByBookerAndStatus(
+                    bookerId, BookingStatus.WAITING
+            );
+            case REJECTED -> bookingRepository.findByBookerAndStatus(
+                    bookerId, BookingStatus.REJECTED
+            );
+        };
+
+        return bookings.stream()
+                .map(BookingMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    public List<BookingDto> findByOwner(
+            Long ownerId,
+            BookingState state
+    ) {
+        validateUser(ownerId);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Booking> bookings = switch (state) {
+            case ALL -> bookingRepository.findByOwner(ownerId);
+            case CURRENT -> bookingRepository.findCurrentByOwner(ownerId, now);
+            case PAST -> bookingRepository.findPastByOwner(ownerId, now);
+            case FUTURE -> bookingRepository.findFutureByOwner(ownerId, now);
+            case WAITING -> bookingRepository.findByOwnerAndStatus(
+                    ownerId, BookingStatus.WAITING
+            );
+            case REJECTED -> bookingRepository.findByOwnerAndStatus(
+                    ownerId, BookingStatus.REJECTED
+            );
+        };
+
+        return bookings.stream()
+                .map(BookingMapper::toDto)
+                .toList();
+    }
+
     private void validateDates(BookingCreateDto dto) {
         LocalDateTime now = LocalDateTime.now();
 
@@ -105,6 +160,14 @@ public class BookingServiceImpl implements BookingService {
         if (!dto.getEnd().isAfter(dto.getStart())) {
             throw new IllegalArgumentException(
                     "Дата окончания должна быть позже даты начала"
+            );
+        }
+    }
+
+    private void validateUser(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException(
+                    "Пользователь не найден: " + userId
             );
         }
     }
