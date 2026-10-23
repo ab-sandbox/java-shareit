@@ -33,4 +33,10 @@ public class ErrorHandler {
 
         return Map.of("error", message);
     }
+
+    @ExceptionHandler(BadRequestException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleBadRequest(BadRequestException e) {
+        return Map.of("error", e.getMessage());
+    }
 }

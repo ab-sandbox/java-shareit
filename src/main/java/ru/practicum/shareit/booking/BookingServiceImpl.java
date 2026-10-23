@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.dto.BookingCreateDto;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
+import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.ItemRepository;
 import ru.practicum.shareit.item.model.Item;
@@ -46,7 +47,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         if (!Boolean.TRUE.equals(item.getAvailable())) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Вещь недоступна для бронирования"
             );
         }
@@ -76,7 +77,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         if (booking.getStatus() != BookingStatus.WAITING) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Решение по бронированию уже принято"
             );
         }
@@ -165,19 +166,19 @@ public class BookingServiceImpl implements BookingService {
         LocalDateTime now = LocalDateTime.now();
 
         if (dto.getStart() == null || dto.getEnd() == null) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Необходимо указать начало и окончание бронирования"
             );
         }
 
         if (!dto.getStart().isAfter(now)) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Дата начала должна быть в будущем"
             );
         }
 
         if (!dto.getEnd().isAfter(dto.getStart())) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Дата окончания должна быть позже даты начала"
             );
         }

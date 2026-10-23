@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import ru.practicum.shareit.booking.dto.BookingCreateDto;
 import ru.practicum.shareit.booking.dto.BookingDto;
+import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.ItemRepository;
 import ru.practicum.shareit.item.model.Item;
@@ -142,7 +143,7 @@ class BookingServiceImplTest {
         item.setAvailable(false);
 
         assertThrows(
-                IllegalArgumentException.class,
+                BadRequestException.class,
                 () -> bookingService.create(
                         booker.getId(),
                         createBookingDto()
@@ -161,7 +162,7 @@ class BookingServiceImplTest {
         );
 
         assertThrows(
-                IllegalArgumentException.class,
+                BadRequestException.class,
                 () -> bookingService.create(booker.getId(), dto)
         );
 
@@ -183,7 +184,7 @@ class BookingServiceImplTest {
         );
 
         assertThrows(
-                IllegalArgumentException.class,
+                BadRequestException.class,
                 () -> bookingService.create(booker.getId(), dto)
         );
 
@@ -199,7 +200,7 @@ class BookingServiceImplTest {
         );
 
         assertThrows(
-                IllegalArgumentException.class,
+                BadRequestException.class,
                 () -> bookingService.create(booker.getId(), dto)
         );
 
@@ -273,7 +274,7 @@ class BookingServiceImplTest {
                 .thenReturn(Optional.of(booking));
 
         assertThrows(
-                IllegalArgumentException.class,
+                BadRequestException.class,
                 () -> bookingService.approve(
                         owner.getId(),
                         booking.getId(),
