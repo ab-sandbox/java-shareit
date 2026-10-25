@@ -3,13 +3,21 @@ package ru.practicum.shareit.item;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.shareit.booking.BookingRepository;
+import ru.practicum.shareit.booking.BookingStatus;
+import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.item.dto.CommentCreateDto;
+import ru.practicum.shareit.item.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.mapper.CommentMapper;
 import ru.practicum.shareit.item.mapper.ItemMapper;
+import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -19,6 +27,8 @@ public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
+    private final CommentRepository commentRepository;
 
     @Override
     @Transactional
@@ -83,6 +93,53 @@ public class ItemServiceImpl implements ItemService {
         return itemRepository.search(text).stream()
                 .map(ItemMapper::toDto)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public CommentDto addComment(
+            Long userId,
+            Long itemId,
+            CommentCreateDto dto
+    ) {
+        if (dto == null || dto.getText() == null
+            || dto.getText().isBlank()) {
+            throw new BadRequestException(
+                    "Текст комментария не может быть пустым"
+            );
+        }
+
+        User author = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Пользователь не найден: " + userId
+                ));
+
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Вещь не найдена: " + itemId
+                ));
+
+        boolean completedBooking =
+                bookingRepository.existsCompletedBooking(
+                        itemId,
+                        userId,
+                        BookingStatus.APPROVED,
+                        LocalDateTime.now()
+                );
+
+        if (!completedBooking) {
+            throw new BadRequestException(
+                    "Оставить комментарий можно только после аренды вещи"
+            );
+        }
+
+        Comment comment = new Comment();
+        comment.setText(dto.getText());
+        comment.setAuthor(author);
+        comment.setItem(item);
+        comment.setCreated(LocalDateTime.now());
+
+        return CommentMapper.toDto(commentRepository.save(comment));
     }
 
     private User getUser(Long userId) {

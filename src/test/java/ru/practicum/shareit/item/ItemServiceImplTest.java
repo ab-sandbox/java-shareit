@@ -2,19 +2,23 @@ package ru.practicum.shareit.item;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.practicum.shareit.booking.BookingRepository;
+import ru.practicum.shareit.booking.BookingStatus;
+import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.item.dto.CommentCreateDto;
+import ru.practicum.shareit.item.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -23,6 +27,8 @@ class ItemServiceImplTest {
     private ItemRepository itemRepository;
     private UserRepository userRepository;
     private ItemService itemService;
+    private BookingRepository bookingRepository;
+    private CommentRepository commentRepository;
 
     private User owner;
     private Item item;
@@ -31,10 +37,14 @@ class ItemServiceImplTest {
     void setUp() {
         itemRepository = mock(ItemRepository.class);
         userRepository = mock(UserRepository.class);
+        bookingRepository = mock(BookingRepository.class);
+        commentRepository = mock(CommentRepository.class);
 
         itemService = new ItemServiceImpl(
                 itemRepository,
-                userRepository
+                userRepository,
+                bookingRepository,
+                commentRepository
         );
 
         owner = new User(
@@ -207,6 +217,118 @@ class ItemServiceImplTest {
                 .contains("Пользователь"));
 
         verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void shouldAddCommentAfterCompletedBooking() {
+        Long userId = 2L;
+        Long itemId = 1L;
+
+        User author = new User(
+                userId, "Ivan", "ivan@example.com"
+        );
+
+        User owner = new User(
+                1L, "Alexey", "alexey@example.com"
+        );
+
+        Item item = new Item(
+                itemId,
+                "Дрель",
+                "Аккумуляторная дрель",
+                true,
+                owner,
+                null
+        );
+
+        CommentCreateDto request = new CommentCreateDto(
+                "Отличная дрель!"
+        );
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(author));
+
+        when(itemRepository.findById(itemId))
+                .thenReturn(Optional.of(item));
+
+        when(bookingRepository.existsCompletedBooking(
+                eq(itemId),
+                eq(userId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        )).thenReturn(true);
+
+        when(commentRepository.save(any(Comment.class)))
+                .thenAnswer(invocation -> {
+                    Comment comment = invocation.getArgument(0);
+                    comment.setId(10L);
+                    return comment;
+                });
+
+        CommentDto result = itemService.addComment(
+                userId, itemId, request
+        );
+
+        assertEquals(10L, result.getId());
+        assertEquals("Отличная дрель!", result.getText());
+        assertEquals("Ivan", result.getAuthorName());
+        assertNotNull(result.getCreated());
+
+        verify(commentRepository).save(any(Comment.class));
+    }
+
+    @Test
+    void shouldNotAddCommentWithoutCompletedBooking() {
+        Long userId = 2L;
+        Long itemId = item.getId();
+
+        User author = new User(
+                userId, "Ivan", "ivan@example.com"
+        );
+
+        CommentCreateDto request = new CommentCreateDto(
+                "Отличная дрель!"
+        );
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(author));
+
+        when(itemRepository.findById(itemId))
+                .thenReturn(Optional.of(item));
+
+        when(bookingRepository.existsCompletedBooking(
+                eq(itemId),
+                eq(userId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        )).thenReturn(false);
+
+        assertThrows(
+                BadRequestException.class,
+                () -> itemService.addComment(userId, itemId, request)
+        );
+
+        verify(commentRepository, never()).save(any(Comment.class));
+    }
+
+    @Test
+    void shouldNotAddCommentWithBlankText() {
+        Long userId = 2L;
+        Long itemId = item.getId();
+
+        CommentCreateDto request = new CommentCreateDto("   ");
+
+        assertThrows(
+                BadRequestException.class,
+                () -> itemService.addComment(userId, itemId, request)
+        );
+
+        verifyNoInteractions(
+                userRepository,
+                itemRepository,
+                bookingRepository,
+                commentRepository
+        );
     }
 
     private void mockExistingItem() {
