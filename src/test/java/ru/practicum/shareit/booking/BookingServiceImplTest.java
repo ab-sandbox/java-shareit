@@ -254,7 +254,7 @@ class BookingServiceImplTest {
                 .thenReturn(Optional.of(booking));
 
         assertThrows(
-                NotFoundException.class,
+                BadRequestException.class,
                 () -> bookingService.approve(
                         booker.getId(),
                         booking.getId(),
