@@ -331,6 +331,96 @@ class ItemServiceImplTest {
         );
     }
 
+    @Test
+    void shouldFindItemWithComments() {
+        Long itemId = item.getId();
+        LocalDateTime created = LocalDateTime.of(
+                2026, 10, 25, 10, 30
+        );
+
+        User author = new User(
+                2L, "Ivan", "ivan@example.com"
+        );
+
+        Comment comment = new Comment();
+        comment.setId(10L);
+        comment.setText("Отличная дрель!");
+        comment.setItem(item);
+        comment.setAuthor(author);
+        comment.setCreated(created);
+
+        when(itemRepository.findById(itemId))
+                .thenReturn(Optional.of(item));
+
+        when(commentRepository.findAllByItemIdOrderByCreatedAsc(itemId))
+                .thenReturn(List.of(comment));
+
+        ItemDto result = itemService.findById(itemId);
+
+        assertEquals(itemId, result.getId());
+        assertEquals("Дрель", result.getName());
+
+        assertEquals(1, result.getComments().size());
+
+        CommentDto commentDto = result.getComments().get(0);
+
+        assertEquals(10L, commentDto.getId());
+        assertEquals("Отличная дрель!", commentDto.getText());
+        assertEquals("Ivan", commentDto.getAuthorName());
+        assertEquals(created, commentDto.getCreated());
+
+        verify(commentRepository)
+                .findAllByItemIdOrderByCreatedAsc(itemId);
+    }
+
+    @Test
+    void shouldFindOwnerItemsWithComments() {
+        Item secondItem = new Item(
+                2L, "Шуруповерт", "Аккумуляторный", true, owner, null
+        );
+
+        User author = new User(2L, "Ivan", "ivan@example.com");
+
+        Comment firstComment = new Comment();
+        firstComment.setId(10L);
+        firstComment.setText("Хорошая дрель");
+        firstComment.setItem(item);
+        firstComment.setAuthor(author);
+        firstComment.setCreated(LocalDateTime.now().minusDays(2));
+
+        Comment secondComment = new Comment();
+        secondComment.setId(11L);
+        secondComment.setText("Отличный шуруповерт");
+        secondComment.setItem(secondItem);
+        secondComment.setAuthor(author);
+        secondComment.setCreated(LocalDateTime.now().minusDays(1));
+
+        when(userRepository.findById(owner.getId()))
+                .thenReturn(Optional.of(owner));
+
+        when(itemRepository.findAllByOwnerId(owner.getId()))
+                .thenReturn(List.of(item, secondItem));
+
+        when(commentRepository.findAllByItemIdInOrderByCreatedAsc(
+                List.of(1L, 2L)
+        )).thenReturn(List.of(firstComment, secondComment));
+
+        List<ItemDto> result = itemService.findAllByOwner(owner.getId());
+
+        assertEquals(2, result.size());
+
+        assertEquals(1, result.get(0).getComments().size());
+        assertEquals("Хорошая дрель",
+                result.get(0).getComments().get(0).getText());
+
+        assertEquals(1, result.get(1).getComments().size());
+        assertEquals("Отличный шуруповерт",
+                result.get(1).getComments().get(0).getText());
+
+        verify(commentRepository, times(1))
+                .findAllByItemIdInOrderByCreatedAsc(List.of(1L, 2L));
+    }
+
     private void mockExistingItem() {
         when(userRepository.findById(owner.getId()))
                 .thenReturn(Optional.of(owner));

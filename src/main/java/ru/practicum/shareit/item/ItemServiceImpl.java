@@ -19,6 +19,8 @@ import ru.practicum.shareit.user.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -72,15 +74,57 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto findById(Long itemId) {
-        return ItemMapper.toDto(getItem(itemId));
+        Item item = getItem(itemId);
+        ItemDto dto = ItemMapper.toDto(item);
+
+        List<CommentDto> comments = commentRepository
+                .findAllByItemIdOrderByCreatedAsc(itemId)
+                .stream()
+                .map(CommentMapper::toDto)
+                .toList();
+
+        dto.setComments(comments);
+
+        return dto;
     }
 
     @Override
     public List<ItemDto> findAllByOwner(Long userId) {
         getUser(userId);
 
-        return itemRepository.findAllByOwnerId(userId).stream()
-                .map(ItemMapper::toDto)
+        List<Item> items = itemRepository.findAllByOwnerId(userId);
+        if (items.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> itemIds = items.stream()
+                .map(Item::getId)
+                .toList();
+
+        Map<Long, List<CommentDto>> commentsByItem =
+                commentRepository.findAllByItemIdInOrderByCreatedAsc(itemIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                comment -> comment.getItem().getId(),
+                                Collectors.mapping(
+                                        CommentMapper::toDto,
+                                        Collectors.toList()
+                                )
+                        ));
+
+        return items.stream()
+                .map(item -> {
+                    ItemDto dto = ItemMapper.toDto(item);
+
+                    dto.setComments(
+                            commentsByItem.getOrDefault(
+                                    item.getId(),
+                                    List.of()
+                            )
+                    );
+
+                    return dto;
+                })
                 .toList();
     }
 
