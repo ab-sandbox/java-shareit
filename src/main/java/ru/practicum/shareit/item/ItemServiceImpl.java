@@ -3,8 +3,10 @@ package ru.practicum.shareit.item;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.shareit.booking.Booking;
 import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.booking.BookingStatus;
+import ru.practicum.shareit.booking.dto.BookingShortDto;
 import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.dto.CommentCreateDto;
@@ -73,7 +75,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public ItemDto findById(Long itemId) {
+    public ItemDto findById(Long itemId, Long userId) {
         Item item = getItem(itemId);
         ItemDto dto = ItemMapper.toDto(item);
 
@@ -84,6 +86,10 @@ public class ItemServiceImpl implements ItemService {
                 .toList();
 
         dto.setComments(comments);
+
+        if (item.getOwner().getId().equals(userId)) {
+            fillBookings(dto, itemId);
+        }
 
         return dto;
     }
@@ -115,14 +121,10 @@ public class ItemServiceImpl implements ItemService {
         return items.stream()
                 .map(item -> {
                     ItemDto dto = ItemMapper.toDto(item);
-
                     dto.setComments(
-                            commentsByItem.getOrDefault(
-                                    item.getId(),
-                                    List.of()
-                            )
+                            commentsByItem.getOrDefault(item.getId(), List.of())
                     );
-
+                    fillBookings(dto, item.getId());
                     return dto;
                 })
                 .toList();
@@ -198,5 +200,22 @@ public class ItemServiceImpl implements ItemService {
                 .orElseThrow(() -> new NotFoundException(
                         "Вещь с ID " + itemId + " не найдена"
                 ));
+    }
+
+    private void fillBookings(ItemDto dto, Long itemId) {
+        LocalDateTime now = LocalDateTime.now();
+
+        bookingRepository.findLastBooking(itemId, BookingStatus.APPROVED, now)
+                .ifPresent(booking -> dto.setLastBooking(toShortDto(booking)));
+
+        bookingRepository.findNextBooking(itemId, BookingStatus.APPROVED, now)
+                .ifPresent(booking -> dto.setNextBooking(toShortDto(booking)));
+    }
+
+    private BookingShortDto toShortDto(Booking booking) {
+        return new BookingShortDto(
+                booking.getId(),
+                booking.getBooker().getId()
+        );
     }
 }

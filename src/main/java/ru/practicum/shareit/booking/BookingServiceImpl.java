@@ -71,7 +71,7 @@ public class BookingServiceImpl implements BookingService {
                 ));
 
         if (!booking.getItem().getOwner().getId().equals(ownerId)) {
-            throw new NotFoundException(
+            throw new BadRequestException(
                     "Пользователь не является владельцем вещи"
             );
         }

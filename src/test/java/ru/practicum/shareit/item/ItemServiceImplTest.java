@@ -2,6 +2,7 @@ package ru.practicum.shareit.item;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.practicum.shareit.booking.Booking;
 import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.booking.BookingStatus;
 import ru.practicum.shareit.exception.BadRequestException;
@@ -355,7 +356,7 @@ class ItemServiceImplTest {
         when(commentRepository.findAllByItemIdOrderByCreatedAsc(itemId))
                 .thenReturn(List.of(comment));
 
-        ItemDto result = itemService.findById(itemId);
+        ItemDto result = itemService.findById(itemId, null);
 
         assertEquals(itemId, result.getId());
         assertEquals("Дрель", result.getName());
@@ -369,8 +370,8 @@ class ItemServiceImplTest {
         assertEquals("Ivan", commentDto.getAuthorName());
         assertEquals(created, commentDto.getCreated());
 
-        verify(commentRepository)
-                .findAllByItemIdOrderByCreatedAsc(itemId);
+        verify(commentRepository).findAllByItemIdOrderByCreatedAsc(itemId);
+        verifyNoInteractions(bookingRepository);
     }
 
     @Test
@@ -419,6 +420,147 @@ class ItemServiceImplTest {
 
         verify(commentRepository, times(1))
                 .findAllByItemIdInOrderByCreatedAsc(List.of(1L, 2L));
+    }
+
+    @Test
+    void shouldFindItemWithBookingsForOwner() {
+        Long itemId = item.getId();
+        Long ownerId = owner.getId();
+
+        User booker = new User(
+                2L, "Ivan", "ivan@example.com"
+        );
+
+        Booking lastBooking = new Booking();
+        lastBooking.setId(10L);
+        lastBooking.setItem(item);
+        lastBooking.setBooker(booker);
+
+        Booking nextBooking = new Booking();
+        nextBooking.setId(11L);
+        nextBooking.setItem(item);
+        nextBooking.setBooker(booker);
+
+        when(itemRepository.findById(itemId))
+                .thenReturn(Optional.of(item));
+
+        when(bookingRepository.findLastBooking(
+                eq(itemId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        )).thenReturn(Optional.of(lastBooking));
+
+        when(bookingRepository.findNextBooking(
+                eq(itemId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        )).thenReturn(Optional.of(nextBooking));
+
+        ItemDto result = itemService.findById(itemId, ownerId);
+
+        assertNotNull(result.getLastBooking());
+        assertEquals(10L, result.getLastBooking().getId());
+        assertEquals(booker.getId(), result.getLastBooking().getBookerId());
+
+        assertNotNull(result.getNextBooking());
+        assertEquals(11L, result.getNextBooking().getId());
+        assertEquals(booker.getId(), result.getNextBooking().getBookerId());
+
+        verify(bookingRepository).findLastBooking(
+                eq(itemId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        );
+
+        verify(bookingRepository).findNextBooking(
+                eq(itemId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        );
+    }
+
+    @Test
+    void shouldFindOwnerItemsWithBookings() {
+        Long ownerId = owner.getId();
+        Long itemId = item.getId();
+
+        User booker = new User(
+                2L, "Ivan", "ivan@example.com"
+        );
+
+        Booking lastBooking = new Booking();
+        lastBooking.setId(10L);
+        lastBooking.setItem(item);
+        lastBooking.setBooker(booker);
+
+        Booking nextBooking = new Booking();
+        nextBooking.setId(11L);
+        nextBooking.setItem(item);
+        nextBooking.setBooker(booker);
+
+        when(userRepository.findById(ownerId))
+                .thenReturn(Optional.of(owner));
+
+        when(itemRepository.findAllByOwnerId(ownerId))
+                .thenReturn(List.of(item));
+
+        when(bookingRepository.findLastBooking(
+                eq(itemId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        )).thenReturn(Optional.of(lastBooking));
+
+        when(bookingRepository.findNextBooking(
+                eq(itemId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        )).thenReturn(Optional.of(nextBooking));
+
+        List<ItemDto> result = itemService.findAllByOwner(ownerId);
+
+        assertEquals(1, result.size());
+
+        ItemDto dto = result.get(0);
+
+        assertNotNull(dto.getLastBooking());
+        assertEquals(10L, dto.getLastBooking().getId());
+        assertEquals(booker.getId(), dto.getLastBooking().getBookerId());
+
+        assertNotNull(dto.getNextBooking());
+        assertEquals(11L, dto.getNextBooking().getId());
+        assertEquals(booker.getId(), dto.getNextBooking().getBookerId());
+
+        verify(bookingRepository).findLastBooking(
+                eq(itemId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        );
+
+        verify(bookingRepository).findNextBooking(
+                eq(itemId),
+                eq(BookingStatus.APPROVED),
+                any(LocalDateTime.class)
+        );
+    }
+
+    @Test
+    void shouldNotShowBookingsToAnotherUser() {
+        Long itemId = item.getId();
+        Long anotherUserId = 2L;
+
+        when(itemRepository.findById(itemId))
+                .thenReturn(Optional.of(item));
+
+        ItemDto result = itemService.findById(
+                itemId,
+                anotherUserId
+        );
+
+        assertEquals(itemId, result.getId());
+        assertNull(result.getLastBooking());
+        assertNull(result.getNextBooking());
+
+        verifyNoInteractions(bookingRepository);
     }
 
     private void mockExistingItem() {

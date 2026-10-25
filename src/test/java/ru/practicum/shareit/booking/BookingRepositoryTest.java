@@ -196,6 +196,63 @@ class BookingRepositoryTest {
         assertEquals(1, bookings.size());
     }
 
+    @Test
+    void shouldFindLastApprovedBooking() {
+        Booking expected = bookingRepository.save(
+                new Booking(
+                        null,
+                        now.minusHours(6),
+                        now.minusHours(2),
+                        item,
+                        booker,
+                        BookingStatus.APPROVED
+                )
+        );
+
+        // Более позднее бронирование, но неподтвержденное
+        saveBooking(
+                now.minusHours(2),
+                now.minusHours(1),
+                BookingStatus.REJECTED
+        );
+
+        Booking result = bookingRepository.findLastBooking(
+                item.getId(),
+                BookingStatus.APPROVED,
+                now
+        ).orElseThrow();
+
+        assertEquals(expected.getId(), result.getId());
+    }
+
+    @Test
+    void shouldFindNextApprovedBooking() {
+        Booking expected = bookingRepository.save(
+                new Booking(
+                        null,
+                        now.plusHours(3),
+                        now.plusHours(5),
+                        item,
+                        booker,
+                        BookingStatus.APPROVED
+                )
+        );
+
+        saveBooking(
+                now.plusDays(5),
+                now.plusDays(6),
+                BookingStatus.APPROVED
+        );
+
+        Booking result = bookingRepository.findNextBooking(
+                item.getId(),
+                BookingStatus.APPROVED,
+                now
+        ).orElseThrow();
+
+        assertEquals(expected.getId(), result.getId());
+    }
+
     private void saveBooking(
             LocalDateTime start,
             LocalDateTime end,

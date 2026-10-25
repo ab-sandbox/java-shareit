@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
@@ -114,16 +115,46 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     );
 
     @Query("""
-        SELECT COUNT(b) > 0
-        FROM Booking b
-        WHERE b.item.id = :itemId
-          AND b.booker.id = :userId
-          AND b.status = :status
-          AND b.end < :now
-        """)
+            SELECT COUNT(b) > 0
+            FROM Booking b
+            WHERE b.item.id = :itemId
+              AND b.booker.id = :userId
+              AND b.status = :status
+              AND b.end < :now
+            """)
     boolean existsCompletedBooking(
             @Param("itemId") Long itemId,
             @Param("userId") Long userId,
+            @Param("status") BookingStatus status,
+            @Param("now") LocalDateTime now
+    );
+
+    @Query("""
+            SELECT b
+            FROM Booking b
+            WHERE b.item.id = :itemId
+              AND b.status = :status
+              AND b.end < :now
+            ORDER BY b.end DESC
+            LIMIT 1
+            """)
+    Optional<Booking> findLastBooking(
+            @Param("itemId") Long itemId,
+            @Param("status") BookingStatus status,
+            @Param("now") LocalDateTime now
+    );
+
+    @Query("""
+            SELECT b
+            FROM Booking b
+            WHERE b.item.id = :itemId
+              AND b.status = :status
+              AND b.start > :now
+            ORDER BY b.start ASC
+            LIMIT 1
+            """)
+    Optional<Booking> findNextBooking(
+            @Param("itemId") Long itemId,
             @Param("status") BookingStatus status,
             @Param("now") LocalDateTime now
     );

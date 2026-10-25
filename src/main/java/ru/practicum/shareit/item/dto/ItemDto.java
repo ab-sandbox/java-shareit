@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import ru.practicum.shareit.booking.dto.BookingShortDto;
 import ru.practicum.shareit.validation.OnCreate;
 import ru.practicum.shareit.validation.OnUpdate;
 
@@ -31,6 +32,10 @@ public class ItemDto {
     private Boolean available;
 
     private List<CommentDto> comments = new ArrayList<>();
+
+    private BookingShortDto lastBooking;
+
+    private BookingShortDto nextBooking;
 
     public ItemDto(
             Long id,
