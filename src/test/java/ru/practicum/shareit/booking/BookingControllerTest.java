@@ -2,6 +2,8 @@ package ru.practicum.shareit.booking;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -14,6 +16,7 @@ import ru.practicum.shareit.exception.NotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -233,5 +236,32 @@ class BookingControllerTest {
                         .value("Бронирование не найдено: 999"));
 
         verify(bookingService).getById(userId, bookingId);
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidBookingRequests")
+    void shouldRejectInvalidBookingRequest(BookingCreateDto request)
+            throws Exception {
+
+        mockMvc.perform(post("/bookings")
+                        .header("X-Sharer-User-Id", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(bookingService);
+    }
+
+    private static Stream<BookingCreateDto> invalidBookingRequests() {
+        LocalDateTime future = LocalDateTime.now().plusDays(2);
+        LocalDateTime past = LocalDateTime.now().minusDays(1);
+
+        return Stream.of(
+                new BookingCreateDto(null, future, future.plusDays(1)),
+                new BookingCreateDto(1L, null, future),
+                new BookingCreateDto(1L, future, null),
+                new BookingCreateDto(1L, past, future),
+                new BookingCreateDto(1L, future, past)
+        );
     }
 }
