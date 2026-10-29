@@ -2,6 +2,7 @@ package ru.practicum.shareit.user;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.user.dto.UserDto;
@@ -11,11 +12,13 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
     @Override
+    @Transactional
     public UserDto create(UserDto userDto) {
         checkEmailUnique(userDto.getEmail(), null);
 
@@ -26,24 +29,20 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserDto update(Long id, UserDto userDto) {
-        User existing = getUser(id);
+        User user = getUser(id);
+
+        if (userDto.getName() != null) {
+            user.setName(userDto.getName());
+        }
 
         if (userDto.getEmail() != null) {
             checkEmailUnique(userDto.getEmail(), id);
+            user.setEmail(userDto.getEmail());
         }
 
-        User updated = new User(
-                existing.getId(),
-                userDto.getName() != null
-                        ? userDto.getName()
-                        : existing.getName(),
-                userDto.getEmail() != null
-                        ? userDto.getEmail()
-                        : existing.getEmail()
-        );
-
-        return UserMapper.toDto(userRepository.save(updated));
+        return UserMapper.toDto(user);
     }
 
     @Override
@@ -59,6 +58,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         getUser(id);
         userRepository.deleteById(id);
@@ -72,7 +72,7 @@ public class UserServiceImpl implements UserService {
     }
 
     private void checkEmailUnique(String email, Long currentUserId) {
-        userRepository.findByEmail(email)
+        userRepository.findByEmailIgnoreCase(email)
                 .filter(user -> !user.getId().equals(currentUserId))
                 .ifPresent(user -> {
                     throw new ConflictException(
