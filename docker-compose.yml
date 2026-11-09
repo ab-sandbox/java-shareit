@@ -1,4 +1,4 @@
-postmanservices:
+services:
   gateway:
     build: gateway
     image: shareit-gateway
