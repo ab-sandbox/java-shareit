@@ -96,16 +96,21 @@ public class BaseClient {
         HttpEntity<Object> request = new HttpEntity<>(body, createHeaders(userId));
 
         try {
-            return rest.exchange(
+            ResponseEntity<Object> response = rest.exchange(
                     path,
                     method,
                     request,
                     Object.class,
                     parameters != null ? parameters : Map.of()
             );
+
+            return ResponseEntity
+                    .status(response.getStatusCode())
+                    .body(response.getBody());
         } catch (HttpStatusCodeException e) {
             return ResponseEntity
                     .status(e.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
                     .body(e.getResponseBodyAsByteArray());
         }
     }
