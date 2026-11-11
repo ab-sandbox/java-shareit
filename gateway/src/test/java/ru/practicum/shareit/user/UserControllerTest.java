@@ -101,12 +101,10 @@ class UserControllerTest {
     void shouldRejectInvalidEmail() throws Exception {
         mockMvc.perform(post("/users")
                         .contentType("application/json")
-                        .content("""
-                                {
-                                  "name": "Alexey",
-                                  "email": "invalid-email"
-                                }
-                                """))
+                        .content("{\n" +
+                                 "  \"name\": \"Alexey\",\n" +
+                                 "  \"email\": \"invalid-email\"\n" +
+                                 "}\n"))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userClient);

@@ -173,12 +173,10 @@ class ItemControllerTest {
         mockMvc.perform(post("/items")
                         .header(USER_ID_HEADER, 1)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Аккумуляторная дрель",
-                                  "available": true
-                                }
-                                """))
+                        .content("{\n" +
+                                 "  \"description\": \"Аккумуляторная дрель\",\n" +
+                                 "  \"available\": true\n" +
+                                 "}\n"))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(itemClient);
@@ -189,12 +187,10 @@ class ItemControllerTest {
         mockMvc.perform(post("/items")
                         .header(USER_ID_HEADER, 1)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Дрель",
-                                  "description": "Аккумуляторная дрель"
-                                }
-                                """))
+                        .content("{\n" +
+                                 "  \"name\": \"Дрель\",\n" +
+                                 "  \"description\": \"Аккумуляторная дрель\"\n" +
+                                 "}\n"))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(itemClient);

@@ -58,13 +58,11 @@ class BookingControllerTest {
         mockMvc.perform(post("/bookings")
                         .header("X-Sharer-User-Id", 1)
                         .contentType("application/json")
-                        .content("""
-                                {
-                                  "itemId": 2,
-                                  "start": "2027-01-10T10:00:00",
-                                  "end": "2027-01-11T10:00:00"
-                                }
-                                """))
+                        .content("{\n" +
+                                 "  \"itemId\": 2,\n" +
+                                 "  \"start\": \"2027-01-10T10:00:00\",\n" +
+                                 "  \"end\": \"2027-01-11T10:00:00\"\n" +
+                                 "}\n"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(10));
 

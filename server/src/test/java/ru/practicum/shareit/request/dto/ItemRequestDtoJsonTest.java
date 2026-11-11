@@ -54,20 +54,18 @@ class ItemRequestDtoJsonTest {
 
     @Test
     void shouldDeserializeRequestWithItems() throws Exception {
-        String content = """
-                {
-                  "id": 1,
-                  "description": "Нужна дрель",
-                  "created": "2026-11-11T10:30:00",
-                  "items": [
-                    {
-                      "id": 2,
-                      "name": "Дрель",
-                      "ownerId": 3
-                    }
-                  ]
-                }
-                """;
+        String content = "{\n" +
+                         "  \"id\": 1,\n" +
+                         "  \"description\": \"Нужна дрель\",\n" +
+                         "  \"created\": \"2026-11-11T10:30:00\",\n" +
+                         "  \"items\": [\n" +
+                         "    {\n" +
+                         "      \"id\": 2,\n" +
+                         "      \"name\": \"Дрель\",\n" +
+                         "      \"ownerId\": 3\n" +
+                         "    }\n" +
+                         "  ]\n" +
+                         "}\n";
 
         ItemRequestDto dto = json.parseObject(content);
 
