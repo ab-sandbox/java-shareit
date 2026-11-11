@@ -9,12 +9,18 @@ public final class ItemMapper {
     }
 
     public static ItemDto toDto(Item item) {
-        return new ItemDto(
+        ItemDto dto = new ItemDto(
                 item.getId(),
                 item.getName(),
                 item.getDescription(),
                 item.getAvailable()
         );
+
+        if (item.getRequest() != null) {
+            dto.setRequestId(item.getRequest().getId());
+        }
+
+        return dto;
     }
 
     public static Item toItem(ItemDto dto) {

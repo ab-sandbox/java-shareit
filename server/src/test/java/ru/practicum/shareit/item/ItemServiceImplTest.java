@@ -45,7 +45,8 @@ class ItemServiceImplTest {
                 itemRepository,
                 userRepository,
                 bookingRepository,
-                commentRepository
+                commentRepository,
+                null
         );
 
         owner = new User(

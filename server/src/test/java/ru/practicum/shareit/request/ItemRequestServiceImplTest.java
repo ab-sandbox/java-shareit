@@ -7,6 +7,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.item.ItemRepository;
+import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.request.dto.ItemRequestCreateDto;
 import ru.practicum.shareit.request.dto.ItemRequestDto;
 import ru.practicum.shareit.user.User;
@@ -25,9 +27,10 @@ class ItemRequestServiceImplTest {
 
     @Mock
     private ItemRequestRepository requestRepository;
-
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private ItemRepository itemRepository;
 
     @InjectMocks
     private ItemRequestServiceImpl requestService;
@@ -79,6 +82,8 @@ class ItemRequestServiceImplTest {
         when(userRepository.existsById(1L)).thenReturn(true);
         when(requestRepository.findByRequester(1L))
                 .thenReturn(List.of(request));
+        when(itemRepository.findByRequestIds(List.of(10L)))
+                .thenReturn(List.of());
 
         List<ItemRequestDto> result = requestService.findByRequester(1L);
 
@@ -93,6 +98,8 @@ class ItemRequestServiceImplTest {
         when(userRepository.existsById(2L)).thenReturn(true);
         when(requestRepository.findAllExceptRequester(2L))
                 .thenReturn(List.of(request));
+        when(itemRepository.findByRequestIds(List.of(10L)))
+                .thenReturn(List.of());
 
         List<ItemRequestDto> result =
                 requestService.findAllExceptRequester(2L);
@@ -108,6 +115,8 @@ class ItemRequestServiceImplTest {
         when(userRepository.existsById(2L)).thenReturn(true);
         when(requestRepository.findById(10L))
                 .thenReturn(Optional.of(request));
+        when(itemRepository.findByRequestIds(List.of(10L)))
+                .thenReturn(List.of());
 
         ItemRequestDto result = requestService.getById(2L, 10L);
 
@@ -147,5 +156,29 @@ class ItemRequestServiceImplTest {
                 () -> requestService.create(999L, dto));
 
         verify(requestRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldReturnRequestWithItems() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(requestRepository.findById(10L))
+                .thenReturn(Optional.of(request));
+
+        Item item = new Item();
+        item.setId(20L);
+        item.setName("Перфоратор Bosch");
+        item.setDescription("Для ремонта");
+        item.setAvailable(true);
+        item.setRequest(request);
+
+        when(itemRepository.findByRequestIds(List.of(10L)))
+                .thenReturn(List.of(item));
+
+        ItemRequestDto result = requestService.getById(1L, 10L);
+
+        assertEquals(1, result.getItems().size());
+        assertEquals(20L, result.getItems().get(0).getId());
+        assertEquals("Перфоратор Bosch", result.getItems().get(0).getName());
+        assertEquals(10L, result.getItems().get(0).getRequestId());
     }
 }

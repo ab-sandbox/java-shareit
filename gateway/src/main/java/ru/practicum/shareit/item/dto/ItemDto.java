@@ -31,6 +31,8 @@ public class ItemDto {
     @NotNull(groups = OnCreate.class)
     private Boolean available;
 
+    private Long requestId;
+
     private List<CommentDto> comments = new ArrayList<>();
 
     private BookingShortDto lastBooking;
