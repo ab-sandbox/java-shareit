@@ -170,6 +170,7 @@ class ItemRequestServiceImplTest {
         item.setDescription("Для ремонта");
         item.setAvailable(true);
         item.setRequest(request);
+        item.setOwner(new User(2L, "Owner", "owner@example.com"));
 
         when(itemRepository.findByRequestIds(List.of(10L)))
                 .thenReturn(List.of(item));
@@ -179,6 +180,6 @@ class ItemRequestServiceImplTest {
         assertEquals(1, result.getItems().size());
         assertEquals(20L, result.getItems().get(0).getId());
         assertEquals("Перфоратор Bosch", result.getItems().get(0).getName());
-        assertEquals(10L, result.getItems().get(0).getRequestId());
+        assertEquals(2L, result.getItems().get(0).getOwnerId());
     }
 }
