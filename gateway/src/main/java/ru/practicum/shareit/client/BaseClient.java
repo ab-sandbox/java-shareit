@@ -111,7 +111,7 @@ public class BaseClient {
             return ResponseEntity
                     .status(e.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(e.getResponseBodyAsByteArray());
+                    .body(e.getResponseBodyAsString());
         }
     }
 
