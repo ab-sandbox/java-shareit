@@ -31,11 +31,11 @@ public class ItemClient extends BaseClient {
     }
 
     public ResponseEntity<Object> update(long userId, long itemId, ItemDto itemDto) {
-        return patch("/" + itemId, userId, itemDto);
+        return patch("/{itemId}", userId, Map.of("itemId", itemId), itemDto);
     }
 
     public ResponseEntity<Object> findById(Long itemId, Long userId) {
-        return get("/" + itemId, userId, null);
+        return get("/{itemId}", userId, Map.of("itemId", itemId));
     }
 
     public ResponseEntity<Object> findAllByOwner(long userId) {
@@ -48,6 +48,6 @@ public class ItemClient extends BaseClient {
 
     public ResponseEntity<Object> addComment(
             long userId, long itemId, CommentCreateDto dto) {
-        return post("/" + itemId + "/comment", userId, dto);
+        return post("/{itemId}/comment", userId, Map.of("itemId", itemId), dto);
     }
 }
