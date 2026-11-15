@@ -180,6 +180,30 @@ class BookingControllerTest {
         verify(bookingClient).findByOwner(1L, BookingState.ALL);
     }
 
+    @Test
+    void shouldReturnBadRequestForUnknownState() throws Exception {
+        mockMvc.perform(get("/bookings")
+                        .header("X-Sharer-User-Id", 1L)
+                        .param("state", "UNKNOWN"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error")
+                        .value("Unknown booking state: UNKNOWN"));
+
+        verifyNoInteractions(bookingClient);
+    }
+
+    @Test
+    void shouldReturnBadRequestForUnknownOwnerState() throws Exception {
+        mockMvc.perform(get("/bookings/owner")
+                        .header("X-Sharer-User-Id", 1L)
+                        .param("state", "UNKNOWN"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error")
+                        .value("Unknown booking state: UNKNOWN"));
+
+        verifyNoInteractions(bookingClient);
+    }
+
     private static Stream<BookingCreateDto> invalidBookingRequests() {
         LocalDateTime future = LocalDateTime.now().plusDays(2);
         LocalDateTime past = LocalDateTime.now().minusDays(1);
